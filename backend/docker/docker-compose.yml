@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  nginx:
+    build: nginx
+    image: nginx:alpine
+    depends_on:
+      - php-fpm
+    ports:
+      - "8010:80"
+      - "44310:443"
+      - "8082:80"
+    working_dir: /var/www
+    networks:
+      - appnet
+    volumes:
+      - ..:/var/www:ro
+      - ./php-fpm/local.ini:/usr/local/etc/php/conf.d/local.ini
+  php-fpm:
+    build: php-fpm
+    image: bitnami/php-fpm:latest
+    depends_on:
+      - db
+    networks:
+      - appnet
+    volumes:
+      - ..:/var/www
+  db:
+    build: db
+    image: mysql:latest
+    command: --default-authentication-plugin=mysql_native_password
+    tty: true
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_DATABASE: "${DB_DATABASE}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - ./db/data:/var/lib/mysql/
+      - ./db/tmp:/var/lib/mysql-files/
+      - ./db/config.cnf:/etc/mysql/my.cnf
+    ports:
+      - "3306:3306"
+    networks:
+      - appnet
+  testdb:
+    image: mysql:latest
+    tmpfs: /var/lib/mysql/
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_DATABASE: "${DB_DATABASE}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "${DB_PORT}:3306"
+    networks:
+      - appnet
+networks:
+  appnet:
+    driver: "bridge"
